@@ -59,30 +59,46 @@ else:
         }
     }
 
-# Redis/Channels
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+# Redis/Channels - Robust Fallback
+REDIS_URL = os.environ.get('REDIS_URL', '')
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [REDIS_URL],
-            'capacity': 1500,
-            'expiry': 10,
-        },
-    },
-}
-
-# Cache
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+# Ensure REDIS_URL has a valid scheme, otherwise use in-memory fallback
+if not REDIS_URL.startswith(('redis://', 'rediss://', 'unix://')):
+    # Fallback to In-Memory Channel Layer
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
         }
     }
-}
+    # Fallback to Local Memory Cache
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+else:
+    # Use Redis
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+                'capacity': 1500,
+                'expiry': 10,
+            },
+        },
+    }
+    
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
 
 # Static files
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
