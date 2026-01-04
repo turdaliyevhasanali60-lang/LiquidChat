@@ -14,7 +14,11 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
-    raise ValueError("ALLOWED_HOSTS environment variable must be set in production")
+    # Fallback to a broader match if no specific host is provided
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com']
+else:
+    # Ensure standard hosts are always included
+    ALLOWED_HOSTS += ['localhost', '127.0.0.1', '.onrender.com']
 
 # HTTPS/SSL Settings
 SECURE_SSL_REDIRECT = True
@@ -27,28 +31,42 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# Database - Use environment variables
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'liquidchat'),
-        'USER': os.environ.get('DB_USER', 'liquidchat'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
+# CSRF Trusted Origins
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://*.pythonanywhere.com'
+]
+
+# Database - Use environment variables with SQLite fallback
+if os.environ.get('DB_NAME'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
+        }
     }
-}
+else:
+    # Use SQLite if no Postgres is provided (Free tier friendly)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }
 
 # Redis/Channels
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(
-                os.environ.get('REDIS_HOST', 'localhost'),
-                int(os.environ.get('REDIS_PORT', 6379))
-            )],
+            'hosts': [REDIS_URL],
             'capacity': 1500,
             'expiry': 10,
         },
@@ -59,7 +77,7 @@ CHANNEL_LAYERS = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:{os.environ.get('REDIS_PORT', 6379)}/1",
+        'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
