@@ -83,7 +83,8 @@ class JwtAuthMiddleware(BaseMiddleware):
                 settings.SECRET_KEY,
                 algorithms=['HS256']
             )
-            user_id = payload.get('user_id')
+            print(f"[DEBUG WS] Decoded payload: {payload}")
+            user_id = payload.get('user_id') or payload.get('id')
             if user_id:
                 user = await self.get_user(user_id)
                 if user and user.is_active:
