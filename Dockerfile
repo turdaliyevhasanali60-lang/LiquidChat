@@ -35,10 +35,11 @@ RUN python manage.py collectstatic --noinput --settings=config.settings_producti
 # Create non-root user
 RUN useradd -m -u 1000 liquidchat && \
     chown -R liquidchat:liquidchat /app
+# Copy start script using a simpler COPY command since permissions are sometimes lost
+COPY start_docker.sh /app/start_docker.sh
+USER root
+RUN chmod +x /app/start_docker.sh
 USER liquidchat
 
-# Expose port
-EXPOSE 8000
-
-# Run gunicorn
-CMD ["gunicorn", "config.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--workers", "4", "--access-logfile", "-", "--error-logfile", "-"]
+# Run start script
+CMD ["/app/start_docker.sh"]
