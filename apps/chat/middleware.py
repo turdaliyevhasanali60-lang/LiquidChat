@@ -45,18 +45,25 @@ class JwtAuthMiddleware(BaseMiddleware):
         # Get token from query string
         query_string = scope.get('query_string', b'').decode()
         token = None
+        
+        print(f"[DEBUG WS] Query String: {query_string}")
 
         # Parse query parameters to find token
         for param in query_string.split('&'):
             if param.startswith('token='):
                 token = param.split('=')[1]
                 break
+        
+        print(f"[DEBUG WS] Token found: {token is not None}")
 
         # Authenticate user
         if token:
-            scope['user'] = await self.get_user_from_token(token)
+            user = await self.get_user_from_token(token)
+            scope['user'] = user
+            print(f"[DEBUG WS] User resolved: {user}")
         else:
             scope['user'] = AnonymousUser()
+            print("[DEBUG WS] No token, using AnonymousUser")
 
         return await super().__call__(scope, receive, send)
 
