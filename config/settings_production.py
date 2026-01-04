@@ -130,5 +130,8 @@ LOGGING = {
 }
 
 # CORS - Restrict in production
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+# CORS - Restrict in production
+CORS_ALLOWED_ORIGINS = [url for url in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if url]
+if not CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS = ['https://liquidchat-s3bl.onrender.com']
 CORS_ALLOW_CREDENTIALS = True
