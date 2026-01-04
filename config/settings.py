@@ -107,17 +107,25 @@ else:
         }
     }
 
-# Redis Channel Layer configuration
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [(os.environ.get('REDIS_HOST', 'localhost'), 6379)],
-            'capacity': 1500,
-            'expiry': 60,
+# Channel Layer configuration (Redis with In-Memory fallback)
+if os.environ.get('REDIS_URL') or os.environ.get('REDIS_HOST'):
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [(os.environ.get('REDIS_HOST', 'localhost'), 6379)],
+                'capacity': 1500,
+                'expiry': 60,
+            },
         },
-    },
-}
+    }
+else:
+    # Fallback for environments without Redis (like PA free tier)
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Custom user model
 AUTH_USER_MODEL = 'authentication.User'
@@ -182,17 +190,26 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'
 
 # Redis configuration for caching and presence
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+REDIS_URL = os.environ.get('REDIS_URL')
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
         }
     }
-}
+else:
+    # Fallback to local memory cache if Redis is not available
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
 
 # Message configuration
 MESSAGE_MAX_LENGTH = 2000
