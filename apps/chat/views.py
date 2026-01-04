@@ -69,6 +69,8 @@ class ConversationDetailView(generics.RetrieveAPIView):
 
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+    lookup_url_kwarg = 'conversation_id'
 
     def get_queryset(self):
         """Return conversations the user participates in."""
